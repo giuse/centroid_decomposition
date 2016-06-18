@@ -1,5 +1,22 @@
 require 'nmatrix'
 
+# SSV algorithm straight from the pseudocode on the paper, page 102
+# TODO: refactor & optimize
+def cd x
+  r = []
+  l = []
+  x.cols.times do
+    z = ssv x
+    ci = x.transpose.dot z
+    ri = ci / ci.norm2
+    r << ri.to_flat_a
+    li = x.dot ri
+    l << li.to_flat_a
+    x -= li.dot ri.transpose
+  end
+  [l.transpose.to_nm, r.transpose.to_nm]
+end
+
 # SSV algorithm straight from the pseudocode on the paper, page 105
 # TODO: refactor & optimize
 def ssv x, debug: false
