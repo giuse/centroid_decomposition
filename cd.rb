@@ -2,11 +2,11 @@ require 'nmatrix'
 
 # SSV algorithm straight from the pseudocode on the paper, page 102
 # TODO: refactor & optimize
-def cd x
+def cd x, debug: false
   r = []
   l = []
   x.cols.times do
-    z = ssv x
+    z = ssv x, debug: debug
     ci = x.transpose.dot z
     ri = ci / ci.norm2
     r << ri.to_flat_a
@@ -22,7 +22,7 @@ end
 def ssv x, debug: false
   pos = nil  # pos = 0 in the paper
   z = NMatrix.ones([x.rows, 1], dtype: :float64)
-  puts "  - x: #{x}" if debug
+  puts "\n  - x: #{x}" if debug
 
   while true do  # do-while with internal break (/return)
 

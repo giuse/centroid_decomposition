@@ -22,7 +22,7 @@ describe "cd" do
 
   it "correctly computes CD for a random matrix" do
     x = NMatrix.random [5,3]
-    l, r = cd x
+    l, r = cd x #, debug: true
     assert x.approximates? l.dot(r.transpose), 1e-15
   end
 end

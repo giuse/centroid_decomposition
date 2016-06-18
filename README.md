@@ -8,7 +8,7 @@ More info:
 
 - http://exascale.info/members/mourad-khayati/
 
-## Paper errata:
+#### Paper errata:
 
 - Pag 105, algo SSV, search nexe element:
     `vi.abs > val` should be `vi.abs > val.abs`
