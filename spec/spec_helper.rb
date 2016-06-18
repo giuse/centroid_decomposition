@@ -98,3 +98,19 @@ RSpec.configure do |config|
   Kernel.srand config.seed
 =end
 end
+
+
+# Helper methods
+class Numeric
+  def approximates? other, epsilon=1e-5
+    (self - other).abs < epsilon
+  end
+end
+class NMatrix
+  def approximates? other, epsilon=1e-5
+    raise "Hell!" unless self.shape == other.shape or self.shape.size != 2
+    self.each_stored_with_indices.all? do |v,r,c|
+      v.approximates? other[r,c], epsilon
+    end
+  end
+end
