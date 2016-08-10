@@ -25,4 +25,16 @@ describe "cd" do
     l, r = cd x #, debug: true
     assert x.approximates? l.dot(r.transpose), 1e-15
   end
+
+  it "reconstructs missing values from a highly correlated matrix" do
+    x = NMatrix[[3,6,9],[5,8,11],[7,10,13],[9,12,15], dtype: :float64]
+    nmissing = 2
+    broken = x.dup
+    nmissing.times do
+      r = (rand*broken.rows).to_i
+      c = (rand*broken.cols).to_i
+      broken[r,c] = Float::NAN # missing values
+    end
+    assert x.approximates? reconstruct(broken), 1e-15
+  end
 end
