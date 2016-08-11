@@ -55,3 +55,35 @@ def ssv x, debug: false
     z[pos] *= -1
   end
 end
+
+def reconstruct x
+  # Questions:
+  # - interpolation only in column or more complex? -> linear on column
+  # - Frobenius norm: can I check only between changed values? -> not yet, we'll think about that
+
+  # Find missing values
+  # - iterate rows and columns of the matrix
+  # - save indices if value.is_nan? (nan_lst)
+
+  # Initialize missing values using interpolation
+
+  # Loop until break (the update is less than threshold)
+
+  # Centroid decomposition
+  # - just call cd on matrix
+
+  # Dimensionality reduction
+  # - set n last columns of L to zeros (n as parameter, default one, possibly two)
+  # - compute L.dot(R), then get the new approximated values
+  # - (optimization: only compute missing values)
+
+  # Update missing values in x from what has been reconstructed
+
+  # Compute Frobenius norm of previous and updated matrices
+  # - euclidean distance: square all elements, sum, square root
+  # - (optimization: there are few elements of difference, everything else we know is the same, we could compute the Frobenius between this subpart)
+
+  # Stop (break) when the two matrices are less than 1e-5 away (size of update, param)
+
+
+end
