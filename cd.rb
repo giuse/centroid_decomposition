@@ -56,7 +56,8 @@ def ssv x, debug: false
   end
 end
 
-# Frobenius norm between matrices (generalization of L2 norm)
+# Frobenius norm for a matrix (generalization of L2 norm)
+# @param [NMatrix]
 def frobenius x
   # TODO: verify if checking only the changed values is sufficient
   Math.sqrt (x**2).reduce :+
@@ -70,6 +71,10 @@ def linear_interpolation_function x1, y1, x2, y2
 end
 
 # Initialize contiguous missing values in a matrix column through linear interpolation
+# Having inizialized the matrix up to this block, we expect the following sequence:
+# `[start_value, first_nan, ..., last_nan, end_value]`
+# We will compute the linear regression function based on `start_value` and `end_value`.
+# Then we will initialize the values in the range `first_nan..last_nan` based on that function.
 def initialize_nans_block mat, col, first_nan, end_value
 
   # TODO: handle border cases!
@@ -87,7 +92,7 @@ def initialize_nans_block mat, col, first_nan, end_value
 end
 
 # Finds and initializes missing values in a matrix
-# @returns <Array<Array>> missing values
+# @return [Array<Array>] missing values
 def initialize_nans x
   missing = Array.new(x.cols) { [] }
   nan_block_begin = nil
@@ -106,6 +111,12 @@ def initialize_nans x
   return missing
 end
 
+# Reconstruct missing values in `x` using Centroid Decomposition
+# @param x [NMatrix] the matrix to reconstruct
+# @param minimum_update_threshold termination criterion: when a reconstruction
+#     iteration creates a matrix which differs from the previous by less than 
+#     `minimum_update_threshold` in Frobenius norm (generalization of L2)
+# @return [NMatrix] the reconstructed matrix
 def reconstruct x, minimum_update_threshold=1e-5
   # NOTE: I still need a case/switch to correctly call the interpolation:
   # - given a missing value, search for precedent and subsequent non-nil values
