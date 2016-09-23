@@ -56,7 +56,19 @@ def ssv x, debug: false
   end
 end
 
-def reconstruct x
+def frobenius x
+  Math.sqrt (x**2).reduce :+
+end
+
+# Linearly interpolate two points on a new x
+def linear_interpolation x1, y1, x2, y2, new_x=nil
+  new_x ||= (x1+x2)/2
+  m = (y2-y1)/(x2-x1)
+  q = y1 - m*x1
+  m*new_x + q # returns new_y
+end
+
+def reconstruct x, minimum_update_threshold=1e-5
   # Questions:
   # - interpolation only in column or more complex? -> linear on column
   # - Frobenius norm: can I check only between changed values? -> not yet, we'll think about that
@@ -64,26 +76,43 @@ def reconstruct x
   # Find missing values
   # - iterate rows and columns of the matrix
   # - save indices if value.is_nan? (nan_lst)
+  missing = x.each_with_indices.collect { |v,r,c| [r,c] if v.nan? }.compact
 
   # Initialize missing values using interpolation
+  missing.each do |r,c|
+    x[r,c] = case
+    when r = 0
+
+    end
+  end
 
   # Loop until break (the update is less than threshold)
+  loop do
+    # Compute Frobenius norm of previous of x
+      # TODO: there are few elements of difference between the two matrices.
+      # How can we compute the Frobenius only on the subparts?
+    frob_old = frobenius x
 
-  # Centroid decomposition
-  # - just call cd on matrix
+    # Centroid decomposition
+    l, r = cd x
 
-  # Dimensionality reduction
-  # - set n last columns of L to zeros (n as parameter, default one, possibly two)
-  # - compute L.dot(R), then get the new approximated values
-  # - (optimization: only compute missing values)
-
-  # Update missing values in x from what has been reconstructed
-
-  # Compute Frobenius norm of previous and updated matrices
-  # - euclidean distance: square all elements, sum, square root
-  # - (optimization: there are few elements of difference, everything else we know is the same, we could compute the Frobenius between this subpart)
-
-  # Stop (break) when the two matrices are less than 1e-5 away (size of update, param)
+    # Dimensionality reduction
+    # - set n last columns of L to zeros (n as parameter, default one, possibly two)
 
 
+
+    # - compute L.dot(R), then get the new approximated values
+    reconstr = l.dot(r) # (optimization: only compute missing values)
+
+    # Update missing values in x from what has been reconstructed
+    missing.each { |r, c| x[r,c] = reconstr[r,c] }
+
+    # Compute Frobenius norm of updated matrix
+    frob_new = frobenius x
+
+    # Stop when the frobenius of the two matrices is less than minimum_update_threshold
+    break if (frob_old - frob_new).abs < minimum_update_threshold
+  end
+
+  return x
 end
