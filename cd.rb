@@ -56,53 +56,83 @@ def ssv x, debug: false
   end
 end
 
+# Frobenius norm between matrices (generalization of L2 norm)
 def frobenius x
+  # TODO: verify if checking only the changed values is sufficient
   Math.sqrt (x**2).reduce :+
 end
 
-# Linearly interpolate two points on a new x
-def linear_interpolation x1, y1, x2, y2, new_x=nil
-  new_x ||= (x1+x2)/2
-  m = (y2-y1)/(x2-x1)
+# Linear interpolation function between two points
+def linear_interpolation_function x1, y1, x2, y2
+  m = (y2.to_f-y1)/(x2-x1)
   q = y1 - m*x1
-  m*new_x + q # returns new_y
+  return -> (x) { m*x + q }
+end
+
+# Initialize contiguous missing values in a matrix column through linear interpolation
+def initialize_nans_block mat, col, first_nan, end_value
+
+  # TODO: handle border cases!
+  # - column starts with block of nans
+  # - column ends with block of nans
+
+  start_value = first_nan - 1
+  last_nan = end_value - 1
+  interp_fn = linear_interpolation_function(
+    start_value, mat[start_value,col],
+    end_value, mat[end_value,col])
+  (first_nan..last_nan).each do |nan_row|
+    mat[nan_row,col] = interp_fn.call(nan_row)
+  end
+end
+
+# Finds and initializes missing values in a matrix
+# @returns <Array<Array>> missing values
+def initialize_nans x
+  missing = Array.new(x.cols) { [] }
+  nan_block_begin = nil
+  x.each_with_indices do |v,r,c|
+    if v.is_nan?
+      nan_block_begin ||= r
+      missing[c] << r
+    elsif nan_block_begin 
+      # we found a value AND we're just out of a nan block
+      # `nan_block_begin` points at the first `nan`
+      # `r` points at the first `non-nan` (end value)
+      initialize_nans_block x, c, nan_block_begin, r
+      nan_block_begin = nil
+    end
+  end
+  return missing
 end
 
 def reconstruct x, minimum_update_threshold=1e-5
-  # Questions:
-  # - interpolation only in column or more complex? -> linear on column
-  # - Frobenius norm: can I check only between changed values? -> not yet, we'll think about that
+  # NOTE: I still need a case/switch to correctly call the interpolation:
+  # - given a missing value, search for precedent and subsequent non-nil values
+  # - if beginning/end of list is reached, use two subsequent/precedent
+  # - nil value clusters should be updated together from the same function
+  # - this means I should return the interpolating function rather than a y value
+  # - last, I should go at this top-down per each column, thus maintaining a precedent/subsequent, rather than collecting the missing and reconstructing them singularly as I am doing here
 
-  # Find missing values
-  # - iterate rows and columns of the matrix
-  # - save indices if value.is_nan? (nan_lst)
-  missing = x.each_with_indices.collect { |v,r,c| [r,c] if v.nan? }.compact
+  # Find and initialize missing values
+  # - iterate rows and columns of the matrix -- maintain last_value
+  # - if `value.is_nan?` save indices to missing list and initialize
 
-  # Initialize missing values using interpolation
-  missing.each do |r,c|
-    x[r,c] = case
-    when r = 0
+  missing = initialize_nans x
+  frob_old = frobenius x  # Frobenius norm of "previous" x
 
-    end
-  end
-
-  # Loop until break (the update is less than threshold)
+  # Loop until `break` (the update is less than threshold)
   loop do
-    # Compute Frobenius norm of previous of x
-      # TODO: there are few elements of difference between the two matrices.
-      # How can we compute the Frobenius only on the subparts?
-    frob_old = frobenius x
-
     # Centroid decomposition
     l, r = cd x
 
     # Dimensionality reduction
     # - set n last columns of L to zeros (n as parameter, default one, possibly two)
 
-
+    # TODO!
 
     # - compute L.dot(R), then get the new approximated values
-    reconstr = l.dot(r) # (optimization: only compute missing values)
+    reconstr = l.dot(r) # (optimization: only compute missing values?)
 
     # Update missing values in x from what has been reconstructed
     missing.each { |r, c| x[r,c] = reconstr[r,c] }
@@ -112,7 +142,11 @@ def reconstruct x, minimum_update_threshold=1e-5
 
     # Stop when the frobenius of the two matrices is less than minimum_update_threshold
     break if (frob_old - frob_new).abs < minimum_update_threshold
+
+    # Update Frobenius norm of "previous" x
+    frob_old = frob_new
   end
 
+  # Finally, return reconstructed matrix
   return x
 end
