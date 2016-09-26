@@ -97,7 +97,7 @@ def initialize_nans x
   missing = Array.new(x.cols) { [] }
   nan_block_begin = nil
   x.each_with_indices do |v,r,c|
-    if v.is_nan?
+    if v.nan?
       nan_block_begin ||= r
       missing[c] << r
     elsif nan_block_begin 
@@ -127,7 +127,7 @@ def reconstruct x, minimum_update_threshold=1e-5
 
   # Find and initialize missing values
   # - iterate rows and columns of the matrix -- maintain last_value
-  # - if `value.is_nan?` save indices to missing list and initialize
+  # - if `value.nan?` save indices to missing list and initialize
 
   missing = initialize_nans x
   frob_old = frobenius x  # Frobenius norm of "previous" x

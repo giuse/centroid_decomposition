@@ -26,15 +26,44 @@ describe "cd" do
     assert x.approximates? l.dot(r.transpose), 1e-15
   end
 
-  it "reconstructs missing values from a highly correlated matrix" do
-    x = NMatrix[[3,6,9],[5,8,11],[7,10,13],[9,12,15], dtype: :float64]
-    nmissing = 2
-    broken = x.dup
-    nmissing.times do
-      r = (rand*broken.rows).to_i
-      c = (rand*broken.cols).to_i
-      broken[r,c] = Float::NAN # missing values
+  describe "reconstruction" do
+
+    describe "linear regression for a linearly correlated column",:focus do
+      describe "when the missing values are in center column" do
+        it do
+          x = NMatrix[[3,6,9,12]].transpose
+          broken = NMatrix[[3,Float::NAN,Float::NAN,12], dtype: :float64].transpose
+          initialize_nans broken
+          assert x.approximates? broken, 1e-15
+        end
+      end
+
+      describe "when the missing values are at one end of the column" do
+        it "(beginning)" do
+          x = NMatrix[[3,6,9,12]].transpose
+          broken = NMatrix[[Float::NAN,Float::NAN,9,12], dtype: :float64].transpose
+          initialize_nans broken
+          assert x.approximates? broken, 1e-15
+        end
+        it "(end)" do
+          x = NMatrix[[3,6,9,12]].transpose
+          broken = NMatrix[[3,6,Float::NAN,Float::NAN], dtype: :float64].transpose
+          initialize_nans broken
+          assert x.approximates? broken, 1e-15
+        end
+      end
     end
-    assert x.approximates? reconstruct(broken), 1e-15
+
+    it "reconstructs missing values from a highly correlated matrix" do
+      x = NMatrix[[3,6,9],[5,8,11],[7,10,13],[9,12,15], dtype: :float64]
+      nmissing = 2
+      broken = x.dup
+      nmissing.times do
+        r = (rand*broken.rows).to_i
+        c = (rand*broken.cols).to_i
+        broken[r,c] = Float::NAN # missing values
+      end
+      assert x.approximates? reconstruct(broken), 1e-15
+    end
   end
 end
