@@ -77,12 +77,48 @@ end
 # Then we will initialize the values in the range `first_nan..last_nan` based on that function.
 def initialize_nans_block mat, col, first_nan, end_value
 
-  # TODO: handle border cases!
-  # - column starts with block of nans
-  # - column ends with block of nans
+  # TODO: handle in the caller if the column is all NANs
 
-  start_value = first_nan - 1
-  last_nan = end_value - 1
+  # TODO: handle border cases!
+  # - empty column
+  # handled in the caller
+  # - column starts with block of nans
+  # this means that first_nan is 0, easy to check
+  if first_nan.zero?
+    # in that case though, we need to find the next non-nan
+    # to do that, we can simply start from end_value and scroll the column until we find a number
+    start_value = nil
+    ((end_value+1)...(mat.rows)).each do |row|
+      unless mat[row,col].nan?
+        start_value = row
+        break
+      end
+    end
+    # if we end the column without finding another value, there is only one value in the column
+    # we simply put the column constant with the one value we found
+    if start_value.nil?
+      v = mat[end_value, col]
+      missing = (0...(mat.rows)).to_a - [end_value]
+      missing.each { |row| mat[row,col] = v }
+      return missing
+    end
+  end
+
+  # - column ends with block of nans
+  if end_value.nil?
+    # that's easy once we're inside. All values until now are known to be initialized
+    # moreover, if we're here, it means a block of nans was opened then closed, so there exist values before
+    # we can just take the previous one
+    start_value = first_nan - 1
+    end_value = start_value - 1
+    last_nan = mat.rows - 1
+  end
+
+  # with extrema taken care of, the normal case is straightforward
+  start_value ||= first_nan - 1
+  last_nan ||= end_value - 1
+
+  
   interp_fn = linear_interpolation_function(
     start_value, mat[start_value,col],
     end_value, mat[end_value,col])
@@ -100,6 +136,14 @@ def initialize_nans x
     if v.nan?
       nan_block_begin ||= r
       missing[c] << r
+      # HACK: refactor this
+      # it's the detector for nil blocks at end of column
+      if r==(x.rows-1)
+        # ... which is also the detector for empty columns
+        raise "HELL! EMPTY COLUMN!" if nan_block_begin==0
+        initialize_nans_block x, c, nan_block_begin, nil
+        nan_block_begin = nil
+      end
     elsif nan_block_begin 
       # we found a value AND we're just out of a nan block
       # `nan_block_begin` points at the first `nan`

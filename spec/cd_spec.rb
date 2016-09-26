@@ -29,27 +29,40 @@ describe "cd" do
   describe "reconstruction" do
 
     describe "linear regression for a linearly correlated column",:focus do
+      x = NMatrix[[3,6,9,12], dtype: :float64].transpose
       describe "when the missing values are in center column" do
         it do
-          x = NMatrix[[3,6,9,12]].transpose
           broken = NMatrix[[3,Float::NAN,Float::NAN,12], dtype: :float64].transpose
           initialize_nans broken
           assert x.approximates? broken, 1e-15
         end
       end
-
       describe "when the missing values are at one end of the column" do
         it "(beginning)" do
-          x = NMatrix[[3,6,9,12]].transpose
           broken = NMatrix[[Float::NAN,Float::NAN,9,12], dtype: :float64].transpose
           initialize_nans broken
           assert x.approximates? broken, 1e-15
         end
         it "(end)" do
-          x = NMatrix[[3,6,9,12]].transpose
           broken = NMatrix[[3,6,Float::NAN,Float::NAN], dtype: :float64].transpose
           initialize_nans broken
           assert x.approximates? broken, 1e-15
+        end
+      end
+      describe "when it has only one value" do
+        it do
+          fixed_val = NMatrix[[3,3,3], dtype: :float64].transpose
+          broken = NMatrix[[Float::NAN,3,Float::NAN], dtype: :float64].transpose
+          initialize_nans broken
+          assert fixed_val.approximates? broken, 1e-15
+        end
+      end
+      describe "when the column is empty" do
+        it "raises an exception" do
+          StandardError.assert.raised? do
+            broken = NMatrix[[Float::NAN,Float::NAN,Float::NAN], dtype: :float64]
+            initialize_nans broken
+          end
         end
       end
     end
