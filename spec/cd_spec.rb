@@ -28,7 +28,7 @@ describe "cd" do
 
   describe "reconstruction" do
 
-    describe "linear regression for a linearly correlated column",:focus do
+    describe "linear regression for a linearly correlated column" do
       x = NMatrix[[3,6,9,12], dtype: :float64].transpose
       describe "when the missing values are in center column" do
         it do
@@ -76,7 +76,8 @@ describe "cd" do
         c = (rand*broken.cols).to_i
         broken[r,c] = Float::NAN # missing values
       end
-      assert x.approximates? reconstruct(broken), 1e-15
+
+      assert x.approximates? reconstruct(broken), 1e-10
     end
   end
 end

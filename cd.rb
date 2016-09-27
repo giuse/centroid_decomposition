@@ -189,14 +189,23 @@ def reconstruct x, minimum_update_threshold=1e-5
 
     # Dimensionality reduction
     # - set n last columns of L to zeros (n as parameter, default one, possibly two)
+    nzerocols = 1
 
-    # TODO!
+    -1.downto(-nzerocols) do |col| # negative column numbering starts from last (=-1)
+      l.rows.times do |row|
+        l[row,col] = 0
+      end
+    end
 
     # - compute L.dot(R), then get the new approximated values
-    reconstr = l.dot(r) # (optimization: only compute missing values?)
+    reconstr = l.dot r.transpose # (optimization: only compute missing values?)
 
     # Update missing values in x from what has been reconstructed
-    missing.each { |r, c| x[r,c] = reconstr[r,c] }
+    missing.each_with_index do |rows, c|
+      rows.each do |r|
+        x[r,c] = reconstr[r,c]
+      end
+    end
 
     # Compute Frobenius norm of updated matrix
     frob_new = frobenius x
