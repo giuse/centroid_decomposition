@@ -71,8 +71,7 @@ def linear_interpolation_function x1, y1, x2, y2
 end
 
 # Initialize contiguous missing values in a matrix column through linear interpolation
-# Having inizialized the matrix up to this block, we expect the following sequence:
-# `[start_value, first_nan, ..., last_nan, end_value]`
+# Base case: `[...(initialized), start_value, first_nan, ..., last_nan, end_value, ...]`
 # We will compute the linear regression function based on `start_value` and `end_value`.
 # Then we will initialize the values in the range `first_nan..last_nan` based on that function.
 def initialize_nans_block mat, col, first_nan, end_value
@@ -91,16 +90,9 @@ def initialize_nans_block mat, col, first_nan, end_value
   end
   # I handle below the case of single-value column with value in other positions
 
-  # TODO: handle in the caller if the column is all NANs
-
-  # TODO: handle border cases!
-  # - empty column
-  # handled in the caller
-  # - column starts with block of nans
-  # this means that first_nan is 0, easy to check
+  # -> column starts with block of nans
   if first_nan.zero?
-    # in that case though, we need to find the next non-nan
-    # to do that, we can simply start from end_value and scroll the column until we find a number
+    # as a second line-point, we need to find the next non-nan
     start_value = nil
     ((end_value+1)...(mat.rows)).each do |row|
       unless mat[row,col].nan?
@@ -108,34 +100,33 @@ def initialize_nans_block mat, col, first_nan, end_value
         break
       end
     end
-    # if we end the column without finding another value, there is only one value in the column
-    # we simply put the column constant with the one value we found
+    # -> only one value in the column (sub-case)
+    # if we start with nan_block, find a value, then no other value found
     if start_value.nil?
-      v = mat[end_value, col]
-      missing = (0...(mat.rows)).to_a - [end_value]
-      missing.each { |row| mat[row,col] = v }
-      return missing
+      mat.rows.times { |row| mat[row, col] = mat[end_value, col] }
+      return
     end
   end
 
-  # - column ends with block of nans
+  # -> column ends with block of nans
   if end_value.nil?
-    # that's easy once we're inside. All values until now are known to be initialized
-    # moreover, if we're here, it means a block of nans was opened then closed, so there exist values before
-    # we can just take the previous one
+    # previous values are known to be already initialized
     start_value = first_nan - 1
     end_value = start_value - 1
     last_nan = mat.rows - 1
   end
 
-  # with extrema taken care of, the normal case is straightforward
+  # -> base case
+  # (rest of the code is shared with some of the special cases)
   start_value ||= first_nan - 1
   last_nan ||= end_value - 1
-
   
+  # compute interpolation function based on nearest two values
   interp_fn = linear_interpolation_function(
     start_value, mat[start_value,col],
     end_value, mat[end_value,col])
+
+  # fill the block calling the function on each NaN
   (first_nan..last_nan).each do |nan_row|
     mat[nan_row,col] = interp_fn.call(nan_row)
   end
@@ -143,35 +134,32 @@ end
 
 # Finds and initializes missing values in a matrix
 # @return [Array<Array>] missing values
-def initialize_nans x
-  missing = Array.new(x.cols) { [] }
+def initialize_nans mat
+  missing = Array.new(mat.cols) { [] }
   nan_block_begin = nil
-  # TODO: it should reset the nan_block automatically at each column end
-  # the problem is most likely that each_with_indices works ROW-WISE
-  # transposing x is crazy, better to use our explicit indices
-  x.cols.times do |c|
-    x.rows.times do |r|
-      if x[r,c].nan?
-  # x.each_with_indices do |v,r,c|
-    # if v.nan?
-      nan_block_begin ||= r
-      missing[c] << r
-      # HACK: refactor this
-      # it's the detector for nil blocks at end of column
-      if r==(x.rows-1)
-        # ... which is also the detector for empty columns
-        raise "HELL! EMPTY COLUMN!" if nan_block_begin==0
-        initialize_nans_block x, c, nan_block_begin, nil
+
+  mat.cols.times do |col|
+    mat.rows.times do |row|
+      if mat[row,col].nan?
+        nan_block_begin ||= row
+        missing[col] << row
+        # check for nan blocks at end of column
+        if row==(mat.rows-1)
+          # make sure the column was not entirely empty
+          raise "HELL! COLUMN \##{col} IS EMPTY!" if nan_block_begin.zero?
+          initialize_nans_block mat, col, nan_block_begin, nil
+          nan_block_begin = nil
+        end
+      elsif nan_block_begin 
+        # we found a value AND we're just out of a nan block
+        # `nan_block_begin` points at the first `nan`
+        # `r` points at the first `non-nan` (end value)
+        initialize_nans_block mat, col, nan_block_begin, row
         nan_block_begin = nil
       end
-    elsif nan_block_begin 
-      # we found a value AND we're just out of a nan block
-      # `nan_block_begin` points at the first `nan`
-      # `r` points at the first `non-nan` (end value)
-      initialize_nans_block x, c, nan_block_begin, r
-      nan_block_begin = nil
     end
-  end end
+  end
+
   return missing
 end
 
@@ -182,19 +170,11 @@ end
 #     `minimum_update_threshold` in Frobenius norm (generalization of L2)
 # @return [NMatrix] the reconstructed matrix
 def reconstruct x, minimum_update_threshold=1e-5
-  # NOTE: I still need a case/switch to correctly call the interpolation:
-  # - given a missing value, search for precedent and subsequent non-nil values
-  # - if beginning/end of list is reached, use two subsequent/precedent
-  # - nil value clusters should be updated together from the same function
-  # - this means I should return the interpolating function rather than a y value
-  # - last, I should go at this top-down per each column, thus maintaining a precedent/subsequent, rather than collecting the missing and reconstructing them singularly as I am doing here
 
   # Find and initialize missing values
-  # - iterate rows and columns of the matrix -- maintain last_value
-  # - if `value.nan?` save indices to missing list and initialize
-
   missing = initialize_nans x
-  frob_old = frobenius x  # Frobenius norm of "previous" x
+  # Frobenius norm of "previous" x (w.r.t. update)
+  frob_old = frobenius x
 
   # Loop until `break` (the update is less than threshold)
   loop do
