@@ -132,8 +132,14 @@ end
 def initialize_nans x
   missing = Array.new(x.cols) { [] }
   nan_block_begin = nil
-  x.each_with_indices do |v,r,c|
-    if v.nan?
+  # TODO: it should reset the nan_block automatically at each column end
+  # the problem is most likely that each_with_indices works ROW-WISE
+  # transposing x is crazy, better to use our explicit indices
+  x.cols.times do |c|
+    x.rows.times do |r|
+      if x[r,c].nan?
+  # x.each_with_indices do |v,r,c|
+    # if v.nan?
       nan_block_begin ||= r
       missing[c] << r
       # HACK: refactor this
@@ -151,7 +157,7 @@ def initialize_nans x
       initialize_nans_block x, c, nan_block_begin, r
       nan_block_begin = nil
     end
-  end
+  end end
   return missing
 end
 
