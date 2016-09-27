@@ -52,9 +52,15 @@ describe "cd" do
       describe "when it has only one value" do
         it do
           fixed_val = NMatrix[[3,3,3], dtype: :float64].transpose
-          broken = NMatrix[[Float::NAN,3,Float::NAN], dtype: :float64].transpose
-          initialize_nans broken
-          assert fixed_val.approximates? broken, 1e-15
+          broken1 = NMatrix[[3,Float::NAN,Float::NAN], dtype: :float64].transpose
+          broken2 = NMatrix[[Float::NAN,3,Float::NAN], dtype: :float64].transpose
+          broken3 = NMatrix[[Float::NAN,Float::NAN,3], dtype: :float64].transpose
+          initialize_nans broken1
+          initialize_nans broken2
+          initialize_nans broken3
+          assert fixed_val.approximates? broken1, 1e-15
+          assert fixed_val.approximates? broken2, 1e-15
+          assert fixed_val.approximates? broken3, 1e-15
         end
       end
       describe "when the column is empty" do

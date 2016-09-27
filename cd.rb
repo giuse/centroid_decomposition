@@ -76,6 +76,20 @@ end
 # We will compute the linear regression function based on `start_value` and `end_value`.
 # Then we will initialize the values in the range `first_nan..last_nan` based on that function.
 def initialize_nans_block mat, col, first_nan, end_value
+  # Handle border cases (->)
+  # (-> empty column is handled in the caller)
+
+  # -> column has single value, at beginning or end
+  # I need to put on top a check if the single value in column is begin or end,
+  if first_nan == 1 && end_value.nil?  # single value in beginning
+    mat.rows.times { |row| mat[row, col] = mat[0,col] }
+    return
+  end
+  if first_nan.zero? && end_value == mat.rows-1 # single value in end
+    mat.rows.times { |row| mat[row, col] = mat[-1,col] }
+    return
+  end
+  # I handle below the case of single-value column with value in other positions
 
   # TODO: handle in the caller if the column is all NANs
 
