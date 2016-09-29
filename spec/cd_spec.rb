@@ -85,5 +85,33 @@ describe "cd" do
 
       assert x.approximates? reconstruct(broken), 1e-10
     end
+
+    # TODO: need a better way to test this!
+    it "reconstructs missing values from a matrix of non-linearly correlated columns" do
+      c1 = [2,4,2,16]
+      c2 = c1.collect { |v| v+2 }
+      c3 = c1.collect { |v| v-2 }
+      x = NMatrix[c1, c2, c3, dtype: :float64].transpose
+      nmissing = 2
+      broken = x.dup
+      # nmissing.times do
+      #   r = (rand*broken.rows).to_i
+      #   c = (rand*broken.cols).to_i
+      #   broken[r,c] = Float::NAN # missing values
+      # end
+      broken[0,1] = Float::NAN
+      broken[2,1] = Float::NAN
+
+      # this can't be solved with linear regression
+      lin = broken.dup
+      missing = initialize_nans lin
+      refute x.approximates? lin, 1e-3
+      # but gives a rough approximation, even with little data,
+      # with a lower order of magnitude of precision w.r.t. the data,
+      # by using centroid decomposition reconstruction, using the
+      # correlation between lines
+      # require 'pry'; binding.pry
+      assert x.approximates? reconstruct(broken.dup), 1e-3
+    end
   end
 end
