@@ -94,11 +94,6 @@ describe "cd" do
       x = NMatrix[c1, c2, c3, dtype: :float64].transpose
       nmissing = 2
       broken = x.dup
-      # nmissing.times do
-      #   r = (rand*broken.rows).to_i
-      #   c = (rand*broken.cols).to_i
-      #   broken[r,c] = Float::NAN # missing values
-      # end
       broken[0,1] = Float::NAN
       broken[2,1] = Float::NAN
 
@@ -110,7 +105,6 @@ describe "cd" do
       # with a lower order of magnitude of precision w.r.t. the data,
       # by using centroid decomposition reconstruction, using the
       # correlation between lines
-      # require 'pry'; binding.pry
       assert x.approximates? reconstruct(broken.dup), 1e-3
     end
   end
