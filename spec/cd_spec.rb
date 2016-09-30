@@ -107,5 +107,24 @@ describe "cd" do
       # correlation between lines
       assert x.approximates? reconstruct(broken.dup), 1e-3
     end
+    xit "reconstructs missing values from large real-world data" do
+      require 'json'
+      x = JSON.load(File.read 'data.json').sort_by(&:first).to_nm
+      percent_missing = 0.1 #%
+      nmissing = (x.cols * x.rows / 100.0 * percent_missing).round
+      broken = x.dup
+      nmissing.times do
+        r = (rand*broken.rows).to_i
+        c = (rand*broken.cols).to_i
+        broken[r,c] = Float::NAN # missing values
+      end
+
+      # this should not be solvable with linear regression
+      lin = broken.dup
+      missing = initialize_nans lin
+      refute x.approximates? lin, 1e-3
+      # but gives centroid decomposition reconstruct should work
+      assert x.approximates? reconstruct(broken.dup), 1e-3
+    end
   end
 end
